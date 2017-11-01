@@ -1,6 +1,6 @@
 # Bee333
 Software example for Bee333 development platform for IoT based on CC1310 microcontroller
------------
+
 ## Prerequisites
 -----------
   * [Code Composer Studio 7.3](http://www.ti.com/tool/CCSTUDIO) or higher with latest updates. Make sure that CCS is using the   latest updates: Help → Check for Updates
