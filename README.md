@@ -1,7 +1,7 @@
-![Bee333](bee.jpg)
-
 # Bee333
 Software example for Bee333 development platform for IoT based on CC1310 microcontroller
+
+![Bee333](bee.jpg)
 
 ## Prerequisites
 -----------
