@@ -58,6 +58,8 @@
 #define EVENT_UPDATE_DATA                               (uint32_t)(1 << 0)
 #define UPDATE_DATA_1S_TIMEOUT                          (uint32_t)1000
 #define UPDATE_DATA_5S_TIMEOUT                          (uint32_t)5000
+#define UPDATE_DATA_10S_TIMEOUT                          (uint32_t)10000
+#define UPDATE_DATA_30S_TIMEOUT                          (uint32_t)30000
 
 /***** Variable declarations *****/
 static Task_Params nodeTaskParams;
@@ -91,7 +93,7 @@ void set_update_data_timeout(uint32_t timeout);
 void set_led_color(Color color, State state);
 void delay_ms(uint32_t t_ms);
 
-static uint32_t update_data_timeout = UPDATE_DATA_5S_TIMEOUT;
+static uint32_t update_data_timeout = UPDATE_DATA_10S_TIMEOUT;
 
 void NodeTask_init(void)
 {
@@ -222,7 +224,7 @@ void button_callback(PIN_Handle handle, PIN_Id pinId)
         return;
 
     if (update_data_timeout == UPDATE_DATA_1S_TIMEOUT)
-        update_data_timeout = UPDATE_DATA_5S_TIMEOUT;
+        update_data_timeout = UPDATE_DATA_10S_TIMEOUT;
     else
         update_data_timeout = UPDATE_DATA_1S_TIMEOUT;
 
