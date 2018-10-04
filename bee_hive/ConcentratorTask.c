@@ -215,7 +215,7 @@ static void updateLcd(void) {
     while ((nodePointer < &knownSensorNodes[CONCENTRATOR_MAX_NODES]) &&
           (nodePointer->address != 0))
     {
-        Display_printf(hDisplaySerial, 0, 0, "SENSOR DATA");
+        Display_printf(hDisplaySerial, 0, 0, "<");
         Display_printf(hDisplaySerial, 0, 0, "address:     0x%02x", (int32_t)nodePointer->address);
         Display_printf(hDisplaySerial, 0, 0, "current:     %d uA",  (int32_t)nodePointer->data.current);
         Display_printf(hDisplaySerial, 0, 0, "power:       %d uW",  (int32_t)nodePointer->data.power);
@@ -226,9 +226,10 @@ static void updateLcd(void) {
         Display_printf(hDisplaySerial, 0, 0, "humi1:       %d %rH", (int32_t)nodePointer->data.humi1);
         Display_printf(hDisplaySerial, 0, 0, "humi2:       %d %rH", (int32_t)nodePointer->data.humi2);
         Display_printf(hDisplaySerial, 0, 0, "pressure:    %d hPa", (int32_t)nodePointer->data.pressure);
-        Display_printf(hDisplaySerial, 0, 0, "acc voltage: %d V",   nodePointer->data.acc_voltage);
+        Display_printf(hDisplaySerial, 0, 0, "acc_voltage: %d V",   nodePointer->data.acc_voltage);
         Display_printf(hDisplaySerial, 0, 0, "button:      %d",     nodePointer->button);
-        Display_printf(hDisplaySerial, 0, 0, "RSSI:        %04d\n", nodePointer->latestRssi);
+        Display_printf(hDisplaySerial, 0, 0, "RSSI:        %04d", nodePointer->latestRssi);
+        Display_printf(hDisplaySerial, 0, 0, ">");
 
         nodePointer++;
     }
