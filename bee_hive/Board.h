@@ -62,6 +62,19 @@ typedef enum UDMAName {
     UDMACOUNT
 } UDMAName;
 
+typedef enum GPTimerName
+{
+    GPTIMER0A = 0,
+    GPTIMER0B,
+    GPTIMERPARTSCOUNT
+} GPTimerName;
+
+typedef enum GPTimers
+{
+    GPTIMER0 = 0,
+    GPTIMERCOUNT
+} GPTimers;
+
 #ifdef __cplusplus
 }
 #endif

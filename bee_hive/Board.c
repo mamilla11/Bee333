@@ -224,6 +224,26 @@ const I2C_Config I2C_config[I2CCOUNT] = {
 const uint_least8_t I2C_count = I2CCOUNT;
 
 /*
+ *  ============================ GPTimer =================================
+ *  Remove unused entries to reduce flash usage both in Board.c and Board.h
+ */
+
+#include <ti/drivers/timer/GPTimerCC26XX.h>
+
+GPTimerCC26XX_Object gptimerCC26XXObjects[GPTIMERCOUNT];
+
+const GPTimerCC26XX_HWAttrs gptimerCC26xxHWAttrs[GPTIMERPARTSCOUNT] = {
+    { .baseAddr = GPT0_BASE, .intNum = INT_GPT0A, .intPriority = (~0), .powerMngrId = PowerCC26XX_PERIPH_GPT0, .pinMux = GPT_PIN_0A, },
+    { .baseAddr = GPT0_BASE, .intNum = INT_GPT0B, .intPriority = (~0), .powerMngrId = PowerCC26XX_PERIPH_GPT0, .pinMux = GPT_PIN_0B, },
+};
+
+const GPTimerCC26XX_Config GPTimerCC26XX_config[GPTIMERPARTSCOUNT] = {
+    { &gptimerCC26XXObjects[0], &gptimerCC26xxHWAttrs[0], GPT_A },
+    { &gptimerCC26XXObjects[0], &gptimerCC26xxHWAttrs[1], GPT_B },
+};
+
+
+/*
  *  =============================== UDMA ===============================
  */
 #include <ti/drivers/dma/UDMACC26XX.h>
