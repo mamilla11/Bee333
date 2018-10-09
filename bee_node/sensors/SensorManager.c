@@ -14,12 +14,11 @@
 #define HDC1080_ADDRESS         (uint8_t)0x40
 
 #define INA226_SHUNT_RESISTANCE (float)1.0F
-#define U_FACTOR                (float)1000000.0F
-#define M_FACTOR                (float)1000.0F
+#define U_FACTOR                (float)100000.0F //10u
+#define M_FACTOR                (float)1000.0F   //1m
 
 static struct bme680_t               bme680_config;
 static struct bme680_sens_conf       bme680_sens_config;
-static struct bme680_heater_conf     bme680_gas_config;
 static struct bme680_comp_field_data bme680_data;
 
 static bool HDC1080_present = false;
@@ -90,10 +89,6 @@ void sm_init(sleep sleep_callback)
     bme680_sens_config.spi_3w      = BME680_SPI_3W_DISABLE;
     bme680_sens_config.intr        = BME680_SPI_3W_INTR_DISABLE;
 
-    bme680_gas_config.heater_temp[0] = 300;
-    bme680_gas_config.heatr_dur[0]   = 100;
-    bme680_gas_config.profile_cnt    = 1;
-
     if (bme680_init(&bme680_config) == BME680_COMM_RES_OK)
         BME680_present = true;
 }
@@ -102,105 +97,164 @@ void sm_trigger_measurement()
 {
     struct bme680_uncomp_field_data  bme680_uncomp_data;
 
-    if (!BME680_present)
+    if ((bme680_set_power_mode(1, &bme680_config) != BME680_COMM_RES_OK) |
+        (bme680_set_sensor_config(&bme680_sens_config, &bme680_config) != BME680_COMM_RES_OK) |
+        (bme680_get_uncomp_data(&bme680_uncomp_data, 1, BME680_ALL, &bme680_config) != BME680_COMM_RES_OK) |
+        (bme680_compensate_data(&bme680_uncomp_data, &bme680_data, 1, BME680_ALL, &bme680_config) != BME680_COMM_RES_OK)) {
+        BME680_present = false;
         return;
+    }
 
-    bme680_set_power_mode(1, &bme680_config);
-    bme680_set_sensor_config(&bme680_sens_config, &bme680_config);
-    //bme680_set_gas_heater_config(&bme680_gas_config, &bme680_config);
-    bme680_get_uncomp_data(&bme680_uncomp_data, 1, BME680_ALL, &bme680_config);
-    bme680_compensate_data(&bme680_uncomp_data, &bme680_data, 1, BME680_ALL, &bme680_config);
+    BME680_present = true;
 }
 
-float sm_get_current_in_A()
+uint16_t sm_get_current()
 {
-    if (INA226_present)
-        return INA226_get_current_in_A();
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    INA226_present = INA226_is_present();
+
+    if (INA226_present) {
+        float reading = INA226_get_current_in_A();
+        if ((reading <= 0.110F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)(reading * U_FACTOR);
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_current_in_uA()
+uint16_t sm_get_voltage()
 {
-    if (INA226_present)
-        return INA226_get_current_in_A() * U_FACTOR;
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    INA226_present = INA226_is_present();
+
+    if (INA226_present) {
+        float reading = INA226_get_bus_voltage_in_V();
+        if ((reading <= 5.5F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)(reading * M_FACTOR);
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_voltage_in_V()
+uint16_t sm_get_power()
 {
-    if (INA226_present)
-        return INA226_get_bus_voltage_in_V();
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    INA226_present = INA226_is_present();
+
+    if (INA226_present) {
+        float reading = INA226_get_power_in_W();
+        if ((reading <= 0.605F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)(reading * U_FACTOR);
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_voltage_in_mV()
+uint16_t sm_get_light()
 {
-    if (INA226_present)
-        return INA226_get_bus_voltage_in_V() * M_FACTOR;
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    OPT3001_present = OPT3001_is_present();
+
+    if (OPT3001_present) {
+        float reading = OPT3001_get_light_in_lux();
+        if ((reading <= 120000.0F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)(reading / 2);
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_power_in_W()
+uint16_t sm_get_temp1()
 {
-    if (INA226_present)
-        return INA226_get_power_in_W();
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    HDC1080_present = HDC1080_is_present();
+
+    if (HDC1080_present) {
+        float reading = HDC1080_get_temperature_in_C();
+        if ((reading <= 120.0F) && (reading >= -50.0F)) {
+            if (reading < 0) {
+                prev_value = (uint16_t)(reading * -10.0F) | 0x8000;
+            }
+            else {
+                prev_value = (uint16_t)(reading * 10.0F);
+            }
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_power_in_uW()
+uint16_t sm_get_humi1()
 {
-    if (INA226_present)
-        return INA226_get_power_in_W() * U_FACTOR;
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    HDC1080_present = HDC1080_is_present();
+
+    if (HDC1080_present) {
+        float reading = HDC1080_get_humidity();
+        if ((reading <= 100.0F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)reading;
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_light_in_lux()
+uint16_t sm_get_temp2()
 {
-    if (OPT3001_present)
-        return (OPT3001_get_light_in_lux());
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    if (BME680_present) {
+        float reading = bme680_data.comp_temperature1 * 0.01F;
+        if ((reading <= 120.0F) && (reading >= -50.0F)) {
+            if (reading < 0) {
+                prev_value = (uint16_t)(reading * -10.0F) | 0x8000;
+            }
+            else {
+                prev_value = (uint16_t)(reading * 10.0F);
+            }
+        }
+    }
+
+
+    return prev_value;
 }
 
-float sm_get_temp1_in_C()
+uint16_t sm_get_humi2()
 {
-    if (HDC1080_present)
-        return HDC1080_get_temperature_in_C();
-    return 0.0F;
+    static uint16_t prev_value = 0;
+
+    if (BME680_present) {
+        float reading = bme680_data.comp_humidity / 1024.0F;
+        if ((reading <= 100.0F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)reading;
+        }
+    }
+
+    return prev_value;
 }
 
-float sm_get_humi1_in_rH()
+uint16_t sm_get_pressure()
 {
-    if (HDC1080_present)
-        return HDC1080_get_humidity();
-    return 0.0F;
-}
+    static uint16_t prev_value = 0;
 
-float sm_get_temp2_in_C()
-{
-    if (BME680_present)
-        return bme680_data.comp_temperature1 * 0.01F;
-    return 0.0F;
-}
+    if (BME680_present) {
+        float reading = bme680_data.comp_pressure * 0.01F;
+        if ((reading <= 1500.0F) && (reading >= 0.0F)) {
+            prev_value = (uint16_t)reading;
+        }
+    }
 
-float sm_get_humi2_in_rH()
-{
-    if (BME680_present)
-        return bme680_data.comp_humidity / 1024.0F;
-    return 0.0F;
-}
-
-float sm_get_pressure_in_hPa()
-{
-    if (BME680_present)
-        return bme680_data.comp_pressure * 0.01F;
-    return 0.0F;
-}
-
-int32_t sm_get_gas()
-{
-    if (BME680_present)
-        return bme680_data.comp_gas;
-    return 0;
+    return prev_value;
 }
 
 uint16_t sm_get_adc_value()
@@ -222,6 +276,14 @@ uint16_t sm_get_adc_value()
     value_r = ADC_convertRawToMicroVolts(adc, (sum/10));
     value = (value_r/1000)*2.07;
     return value;
+}
+
+uint16_t sm_get_status() {
+
+    return (INA226_present        |
+           (OPT3001_present << 1) |
+           (HDC1080_present << 2) |
+           (BME680_present  << 3));
 }
 
 

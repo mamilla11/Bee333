@@ -1,4 +1,16 @@
 eclipse.preferences.version=1
+encoding//Debug/FreeModbus/modbus/ascii/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/ascii/subdir_vars.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/functions/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/functions/subdir_vars.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/rtu/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/rtu/subdir_vars.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/subdir_vars.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/tcp/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/modbus/tcp/subdir_vars.mk=UTF-8
+encoding//Debug/FreeModbus/port/rtt/subdir_rules.mk=UTF-8
+encoding//Debug/FreeModbus/port/rtt/subdir_vars.mk=UTF-8
 encoding//Debug/easylink/subdir_rules.mk=UTF-8
 encoding//Debug/easylink/subdir_vars.mk=UTF-8
 encoding//Debug/makefile=UTF-8

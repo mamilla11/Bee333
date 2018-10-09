@@ -205,7 +205,6 @@ static void nodeRadioTaskFunction(UArg arg0, UArg arg1)
             prevTicks = currentTicks;
 
             dmSensorPacket.data = new_data;
-            dmSensorPacket.button = !PIN_getInputValue(BUTTON_USER);
 
             sendDmPacket(dmSensorPacket, NODERADIO_MAX_RETRIES, NORERADIO_ACK_TIMEOUT_TIME_MS);
         }

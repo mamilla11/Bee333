@@ -1,35 +1,3 @@
-/*
- * Copyright (c) 2015-2017, Texas Instruments Incorporated
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * *  Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * *  Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * *  Neither the name of Texas Instruments Incorporated nor the names of
- *    its contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 /***** Includes *****/
 /* XDCtools Header files */ 
 #include <Board.h>
@@ -51,44 +19,37 @@
 #include "ConcentratorRadioTask.h"
 #include "ConcentratorTask.h"
 #include "RadioProtocol.h"
+#include "mb.h"
+#include "port.h"
 
-
-/***** Defines *****/
 #define CONCENTRATOR_TASK_STACK_SIZE                    1024
 #define CONCENTRATOR_TASK_PRIORITY                      3
 #define CONCENTRATOR_EVENT_ALL                          0xFFFFFFFF
 #define CONCENTRATOR_EVENT_NEW_SENSOR_DATA              (uint32_t)(1 << 0)
-#define CONCENTRATOR_MAX_NODES                          7
+#define CONCENTRATOR_MAX_NODES                          10
 
-/***** Type declarations *****/
-struct SensorDataNode {
-    uint8_t address;
-    struct Data data;
-    uint8_t button;
-    int8_t latestRssi;
-};
-
-
-/***** Variable declarations *****/
 static Task_Params concentratorTaskParams;
-Task_Struct concentratorTask;    /* not static so you can see in ROV */
+Task_Struct concentratorTask;
 static uint8_t concentratorTaskStack[CONCENTRATOR_TASK_STACK_SIZE];
-Event_Struct concentratorEvent;  /* not static so you can see in ROV */
+Event_Struct concentratorEvent;
 static Event_Handle concentratorEventHandle;
-static struct SensorDataNode latestActiveAdcSensorNode;
-struct SensorDataNode knownSensorNodes[CONCENTRATOR_MAX_NODES];
-static struct SensorDataNode* lastAddedSensorNode = knownSensorNodes;
-static Display_Handle hDisplaySerial;
+uint8_t knownSensorNodes[CONCENTRATOR_MAX_NODES] = {0};
+struct NodeData lastNodeData;
 
+static PIN_Handle pin_handle;
+static PIN_State pin_state;
+
+PIN_Config pinTable[] = {
+   LED_BEE       | PIN_GPIO_OUTPUT_EN  | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+   PIN_TERMINATE
+};
 
 /***** Prototypes *****/
 static void concentratorTaskFunction(UArg arg0, UArg arg1);
 static void packetReceivedCallback(struct SensorPacket* packet, int8_t rssi);
-static void updateLcd(void);
-static void addNewNode(struct SensorDataNode* node);
-static void updateNode(struct SensorDataNode* node);
-static uint8_t isKnownNodeAddress(uint8_t address);
-
+void updateNode(struct NodeData* node);
+void updateRegs(uint8_t start_address);
+bool initModbus();
 
 /***** Function definitions *****/
 void ConcentratorTask_init(void) {
@@ -109,128 +70,94 @@ void ConcentratorTask_init(void) {
 
 static void concentratorTaskFunction(UArg arg0, UArg arg1)
 {
-    /* Initialize display and try to open both UART and LCD types of display. */
-    Display_Params params;
-    Display_Params_init(&params);
-    params.lineClearMode = DISPLAY_CLEAR_BOTH;
+    pin_handle = PIN_open(&pin_state, pinTable);
+    PIN_setOutputValue(pin_handle, LED_BEE, 0);
 
-    /* Open both an available LCD display and an UART display.
-     * Whether the open call is successful depends on what is present in the
-     * Display_config[] array of the board file.
-     *
-     * Note that for SensorTag evaluation boards combined with the SHARP96x96
-     * Watch DevPack, there is a pin conflict with UART such that one must be
-     * excluded, and UART is preferred by default. To display on the Watch
-     * DevPack, add the precompiler define BOARD_DISPLAY_EXCLUDE_UART.
-     */
-    hDisplaySerial = Display_open(Display_Type_UART, &params);
-
-    /* Check if the selected Display type was found and successfully opened */
-    if (hDisplaySerial)
-    {
-        Display_printf(hDisplaySerial, 0, 0, "Waiting for nodes...");
-    }
-
-    /* Register a packet received callback with the radio task */
+    initModbus();
     ConcentratorRadioTask_registerPacketReceivedCallback(CONCENTRATOR, packetReceivedCallback);
 
-    /* Enter main task loop */
-    while(1) {
-        /* Wait for event */
-        uint32_t events = Event_pend(concentratorEventHandle, 0, CONCENTRATOR_EVENT_ALL, BIOS_WAIT_FOREVER);
+    while(1)
+    {
+        eMBPoll();
+        uint32_t events = Event_pend(concentratorEventHandle, 0, CONCENTRATOR_EVENT_ALL, 10);
 
-        /* If we got a new ADC sensor value */
-        if(events & CONCENTRATOR_EVENT_NEW_SENSOR_DATA) {
-            /* If we knew this node from before, update the value */
-            if(isKnownNodeAddress(latestActiveAdcSensorNode.address)) {
-                updateNode(&latestActiveAdcSensorNode);
-            }
-            else {
-                /* Else add it */
-                addNewNode(&latestActiveAdcSensorNode);
-            }
+        if(events & CONCENTRATOR_EVENT_NEW_SENSOR_DATA)
+        {
+            updateNode(&lastNodeData);
 
-            /* Update the values on the LCD */
-            updateLcd();
+            PIN_setOutputValue(pin_handle, LED_BEE, 1);
+            Task_sleep(500);
+            PIN_setOutputValue(pin_handle, LED_BEE, 0);
         }
     }
 }
+
+
+bool initModbus()
+{
+    if( MB_ENOERR != eMBInit(MB_ASCII, 0x80, 0, 19200, MB_PAR_NONE)) {
+        return false;
+    }
+
+    if( MB_ENOERR != eMBEnable()) {
+        return false;
+    }
+
+    return true;
+}
+
 
 static void packetReceivedCallback(struct SensorPacket* packet, int8_t rssi)
 {
     if(packet->header.packetType == SENSOR_PACKET)
     {
 
-        /* Save the values */
-        latestActiveAdcSensorNode.address = packet->header.sourceAddress;
-        latestActiveAdcSensorNode.data = packet->data;
-        latestActiveAdcSensorNode.button = packet->button;
-        latestActiveAdcSensorNode.latestRssi = rssi;
+        lastNodeData.address = packet->header.sourceAddress;
+        lastNodeData.data    = packet->data;
+        if (rssi < 0) {
+            lastNodeData.rssi = (uint16_t)(rssi * -1) | 0x8000;
+        }
+        else {
+            lastNodeData.rssi    = rssi;
+        }
 
         Event_post(concentratorEventHandle, CONCENTRATOR_EVENT_NEW_SENSOR_DATA);
     }
 }
 
-static uint8_t isKnownNodeAddress(uint8_t address) {
-    uint8_t found = 0;
+void updateNode(struct NodeData* node)
+{
     uint8_t i;
     for (i = 0; i < CONCENTRATOR_MAX_NODES; i++)
     {
-        if (knownSensorNodes[i].address == address)
+        if (knownSensorNodes[i] == node->address)
         {
-            found = 1;
+            updateRegs(NodeDataSize * i);
             break;
         }
-    }
-    return found;
-}
 
-static void updateNode(struct SensorDataNode* node) {
-    uint8_t i;
-    for (i = 0; i < CONCENTRATOR_MAX_NODES; i++) {
-        if (knownSensorNodes[i].address == node->address)
+        if (knownSensorNodes[i] == 0)
         {
-            knownSensorNodes[i].data = node->data;
-            knownSensorNodes[i].latestRssi = node->latestRssi;
-            knownSensorNodes[i].button = node->button;
+            knownSensorNodes[i] = node->address;
+            updateRegs(NodeDataSize * i);
             break;
         }
     }
 }
 
-static void addNewNode(struct SensorDataNode* node) {
-    *lastAddedSensorNode = *node;
-
-    /* Increment and wrap */
-    lastAddedSensorNode++;
-    if (lastAddedSensorNode > &knownSensorNodes[CONCENTRATOR_MAX_NODES-1])
-    {
-        lastAddedSensorNode = knownSensorNodes;
-    }
-}
-
-static void updateLcd(void) {
-    struct SensorDataNode* nodePointer = knownSensorNodes;
-
-    while ((nodePointer < &knownSensorNodes[CONCENTRATOR_MAX_NODES]) &&
-          (nodePointer->address != 0))
-    {
-        Display_printf(hDisplaySerial, 0, 0, "<");
-        Display_printf(hDisplaySerial, 0, 0, "address:     0x%02x", (int32_t)nodePointer->address);
-        Display_printf(hDisplaySerial, 0, 0, "current:     %d uA",  (int32_t)nodePointer->data.current);
-        Display_printf(hDisplaySerial, 0, 0, "power:       %d uW",  (int32_t)nodePointer->data.power);
-        Display_printf(hDisplaySerial, 0, 0, "voltage:     %d mV",  (int32_t)nodePointer->data.voltage);
-        Display_printf(hDisplaySerial, 0, 0, "light:       %d lux", (int32_t)nodePointer->data.light);
-        Display_printf(hDisplaySerial, 0, 0, "temp1:       %d C",   (int32_t)nodePointer->data.temp1);
-        Display_printf(hDisplaySerial, 0, 0, "temp2:       %d C",   (int32_t)nodePointer->data.temp2);
-        Display_printf(hDisplaySerial, 0, 0, "humi1:       %d %rH", (int32_t)nodePointer->data.humi1);
-        Display_printf(hDisplaySerial, 0, 0, "humi2:       %d %rH", (int32_t)nodePointer->data.humi2);
-        Display_printf(hDisplaySerial, 0, 0, "pressure:    %d hPa", (int32_t)nodePointer->data.pressure);
-        Display_printf(hDisplaySerial, 0, 0, "acc_voltage: %d V",   nodePointer->data.acc_voltage);
-        Display_printf(hDisplaySerial, 0, 0, "button:      %d",     nodePointer->button);
-        Display_printf(hDisplaySerial, 0, 0, "RSSI:        %04d", nodePointer->latestRssi);
-        Display_printf(hDisplaySerial, 0, 0, ">");
-
-        nodePointer++;
-    }
+void updateRegs(uint8_t start_address)
+{
+    set_single_ao(start_address + ADDRESS,     lastNodeData.address);
+    set_single_ao(start_address + STATUS,      lastNodeData.data.status);
+    set_single_ao(start_address + CURRENT,     lastNodeData.data.current);
+    set_single_ao(start_address + POWER,       lastNodeData.data.power);
+    set_single_ao(start_address + VOLTAGE,     lastNodeData.data.voltage);
+    set_single_ao(start_address + LIGHT,       lastNodeData.data.light);
+    set_single_ao(start_address + TEMP_1,      lastNodeData.data.temp1);
+    set_single_ao(start_address + HUMI_1,      lastNodeData.data.humi1);
+    set_single_ao(start_address + TEMP_2,      lastNodeData.data.temp2);
+    set_single_ao(start_address + HUMI_2,      lastNodeData.data.humi2);
+    set_single_ao(start_address + PRESSURE,    lastNodeData.data.pressure);
+    set_single_ao(start_address + ACC_VOLTAGE, lastNodeData.data.acc_voltage);
+    set_single_ao(start_address + RSSI,        lastNodeData.rssi);
 }

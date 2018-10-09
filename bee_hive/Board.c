@@ -49,56 +49,6 @@ const GPIOCC26XX_Config GPIOCC26XX_config = {
 };
 
 /*
- *  =============================== Display ===============================
- */
-#include <ti/display/Display.h>
-#include <ti/display/DisplayUart.h>
-
-#ifndef BOARD_DISPLAY_UART_STRBUF_SIZE
-#define BOARD_DISPLAY_UART_STRBUF_SIZE    128
-#endif
-
-DisplayUart_Object     displayUartObject;
-
-static char uartStringBuf[BOARD_DISPLAY_UART_STRBUF_SIZE];
-
-const DisplayUart_HWAttrs displayUartHWAttrs = {
-    .uartIdx      = UART0,
-    .baudRate     = 115200,
-    .mutexTimeout = (unsigned int)(-1),
-    .strBuf       = uartStringBuf,
-    .strBufLen    = BOARD_DISPLAY_UART_STRBUF_SIZE,
-};
-
-#ifndef BOARD_DISPLAY_USE_UART
-#define BOARD_DISPLAY_USE_UART 1
-#endif
-#ifndef BOARD_DISPLAY_USE_UART_ANSI
-#define BOARD_DISPLAY_USE_UART_ANSI 0
-#endif
-#ifndef BOARD_DISPLAY_USE_LCD
-#define BOARD_DISPLAY_USE_LCD 0
-#endif
-
-#if (BOARD_DISPLAY_USE_UART)
-const Display_Config Display_config[] = {
-    {
-        .fxnTablePtr = &DisplayUartMin_fxnTable,
-        .object      = &displayUartObject,
-        .hwAttrs     = &displayUartHWAttrs,
-    },
-};
-
-const uint_least8_t Display_count = sizeof(Display_config) / sizeof(Display_Config);
-
-#else
-
-const Display_Config *Display_config = NULL;
-const uint_least8_t Display_count = 0;
-
-#endif /* (BOARD_DISPLAY_USE_UART) */
-
-/*
  *  =============================== Power ===============================
  */
 #include <ti/drivers/Power.h>
@@ -224,6 +174,26 @@ const I2C_Config I2C_config[I2CCOUNT] = {
 const uint_least8_t I2C_count = I2CCOUNT;
 
 /*
+ *  ============================ GPTimer =================================
+ *  Remove unused entries to reduce flash usage both in Board.c and Board.h
+ */
+
+#include <ti/drivers/timer/GPTimerCC26XX.h>
+
+GPTimerCC26XX_Object gptimerCC26XXObjects[GPTIMERCOUNT];
+
+const GPTimerCC26XX_HWAttrs gptimerCC26xxHWAttrs[GPTIMERPARTSCOUNT] = {
+    { .baseAddr = GPT0_BASE, .intNum = INT_GPT0A, .intPriority = (~0), .powerMngrId = PowerCC26XX_PERIPH_GPT0, .pinMux = GPT_PIN_0A, },
+    { .baseAddr = GPT0_BASE, .intNum = INT_GPT0B, .intPriority = (~0), .powerMngrId = PowerCC26XX_PERIPH_GPT0, .pinMux = GPT_PIN_0B, },
+};
+
+const GPTimerCC26XX_Config GPTimerCC26XX_config[GPTIMERPARTSCOUNT] = {
+    { &gptimerCC26XXObjects[0], &gptimerCC26xxHWAttrs[0], GPT_A },
+    { &gptimerCC26XXObjects[0], &gptimerCC26xxHWAttrs[1], GPT_B },
+};
+
+
+/*
  *  =============================== UDMA ===============================
  */
 #include <ti/drivers/dma/UDMACC26XX.h>
@@ -257,7 +227,6 @@ void board_init(void)
         while (1);
     }
 
-    Display_init();
     UART_init();
     SPI_init();
     GPIO_init();

@@ -187,7 +187,6 @@ static void packetReceivedCallback(struct SensorPacket* packet, int8_t rssi)
         /* Save the values */
         sensor_data.address = packet->header.sourceAddress;
         sensor_data.data = packet->data;
-        sensor_data.button = packet->button;
         sensor_data.latestRssi = rssi;
 
         if (first_event)

@@ -53,23 +53,22 @@ struct PacketHeader {
 };
 
 struct Data {
-    float   current;
-    float   power;
-    float   voltage;
-    float   light;
-    float   temp1;
-    float   humi1;
-    float   temp2;
-    float   humi2;
-    float   pressure;
-    int32_t gas;
+    uint16_t status;
+    uint16_t current;
+    uint16_t power;
+    uint16_t voltage;
+    uint16_t light;
+    uint16_t temp1;
+    uint16_t humi1;
+    uint16_t temp2;
+    uint16_t humi2;
+    uint16_t pressure;
     uint16_t acc_voltage;
 };
 
 struct SensorPacket {
     struct PacketHeader header;
     struct Data data;
-    uint8_t button;
     uint32_t time100MiliSec;
 } SensorPacket;
 
