@@ -49,56 +49,6 @@ const GPIOCC26XX_Config GPIOCC26XX_config = {
 };
 
 /*
- *  =============================== Display ===============================
- */
-#include <ti/display/Display.h>
-#include <ti/display/DisplayUart.h>
-
-#ifndef BOARD_DISPLAY_UART_STRBUF_SIZE
-#define BOARD_DISPLAY_UART_STRBUF_SIZE    128
-#endif
-
-DisplayUart_Object     displayUartObject;
-
-static char uartStringBuf[BOARD_DISPLAY_UART_STRBUF_SIZE];
-
-const DisplayUart_HWAttrs displayUartHWAttrs = {
-    .uartIdx      = UART0,
-    .baudRate     = 115200,
-    .mutexTimeout = (unsigned int)(-1),
-    .strBuf       = uartStringBuf,
-    .strBufLen    = BOARD_DISPLAY_UART_STRBUF_SIZE,
-};
-
-#ifndef BOARD_DISPLAY_USE_UART
-#define BOARD_DISPLAY_USE_UART 1
-#endif
-#ifndef BOARD_DISPLAY_USE_UART_ANSI
-#define BOARD_DISPLAY_USE_UART_ANSI 0
-#endif
-#ifndef BOARD_DISPLAY_USE_LCD
-#define BOARD_DISPLAY_USE_LCD 0
-#endif
-
-#if (BOARD_DISPLAY_USE_UART)
-const Display_Config Display_config[] = {
-    {
-        .fxnTablePtr = &DisplayUartMin_fxnTable,
-        .object      = &displayUartObject,
-        .hwAttrs     = &displayUartHWAttrs,
-    },
-};
-
-const uint_least8_t Display_count = sizeof(Display_config) / sizeof(Display_Config);
-
-#else
-
-const Display_Config *Display_config = NULL;
-const uint_least8_t Display_count = 0;
-
-#endif /* (BOARD_DISPLAY_USE_UART) */
-
-/*
  *  =============================== Power ===============================
  */
 #include <ti/drivers/Power.h>
@@ -277,7 +227,6 @@ void board_init(void)
         while (1);
     }
 
-    Display_init();
     UART_init();
     SPI_init();
     GPIO_init();

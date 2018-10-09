@@ -134,16 +134,16 @@ static void nodeTaskFunction(UArg arg0, UArg arg1)
             sm_trigger_measurement();
 
             struct Data data;
-            data.current  = sm_get_current_in_uA();
-            data.power    = sm_get_power_in_uW();
-            data.voltage  = sm_get_voltage_in_mV();
-            data.light    = sm_get_light_in_lux();
-            data.temp1    = sm_get_temp1_in_C();
-            data.humi1    = sm_get_humi1_in_rH();
-            data.temp2    = sm_get_temp2_in_C();
-            data.humi2    = sm_get_humi2_in_rH();
-            data.pressure = sm_get_pressure_in_hPa();
-            data.gas      = sm_get_gas();
+            data.status   = sm_get_status();
+            data.current  = sm_get_current();
+            data.power    = sm_get_power();
+            data.voltage  = sm_get_voltage();
+            data.light    = sm_get_light();
+            data.temp1    = sm_get_temp1();
+            data.humi1    = sm_get_humi1();
+            data.temp2    = sm_get_temp2();
+            data.humi2    = sm_get_humi2();
+            data.pressure = sm_get_pressure();
             data.acc_voltage = sm_get_adc_value();
 
             PIN_setOutputValue(pin_handle, LED_BEE, 0);
