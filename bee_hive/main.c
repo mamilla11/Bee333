@@ -52,7 +52,6 @@
 /* Board Header files */
 #include "ConcentratorRadioTask.h"
 #include "ConcentratorTask.h"
-#include "DisplayTask.h"
 #include "UserIfaceTask.h"
 
 /*
@@ -65,7 +64,6 @@ int main(void)
 
     /* Initialize concentrator tasks */
     UserIfaceTask_init();
-    DisplayTask_init();
     ConcentratorTask_init();
     ConcentratorRadioTask_init();
 

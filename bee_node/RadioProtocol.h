@@ -36,7 +36,7 @@
 #include "stdint.h"
 #include "easylink/EasyLink.h"
 
-#define RADIO_CONCENTRATOR_ADDRESS     0x00
+#define RADIO_CONCENTRATOR_ADDRESS     0x14
 #define RADIO_EASYLINK_MODULATION      EasyLink_Phy_50kbps2gfsk
 
 enum PacketType

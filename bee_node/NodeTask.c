@@ -56,8 +56,6 @@
 #define NODE_TASK_PRIORITY                              3
 #define EVENT_ALL                                       (uint32_t)0xFFFFFFFF
 #define EVENT_UPDATE_DATA                               (uint32_t)(1 << 0)
-#define UPDATE_DATA_1S_TIMEOUT                          (uint32_t)1000
-#define UPDATE_DATA_5S_TIMEOUT                          (uint32_t)5000
 
 /***** Variable declarations *****/
 static Task_Params nodeTaskParams;
@@ -70,6 +68,10 @@ static Clock_Handle update_data;
 
 static PIN_Handle pin_handle;
 static PIN_State pin_state;
+
+uint32_t timeouts[] = {5000, 30000, 60000};
+typedef enum {TIMEOUT_5S, TIMEOUT_30S, TIMEOUT_60S, TIMEOUT_COUNT} Timeout;
+Timeout timeout = TIMEOUT_5S;
 
 PIN_Config pinTable[] = {
    BUTTON_USER   | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
@@ -90,8 +92,6 @@ void button_callback(PIN_Handle handle, PIN_Id pinId);
 void set_update_data_timeout(uint32_t timeout);
 void set_led_color(Color color, State state);
 void delay_ms(uint32_t t_ms);
-
-static uint32_t update_data_timeout = UPDATE_DATA_5S_TIMEOUT;
 
 void NodeTask_init(void)
 {
@@ -123,7 +123,7 @@ static void nodeTaskFunction(UArg arg0, UArg arg1)
 
     sm_init(delay_ms);
 
-    set_update_data_timeout(update_data_timeout);
+    set_update_data_timeout(timeout);
 
     while(1)
     {
@@ -210,7 +210,7 @@ void set_led_color(Color color, State state)
 void set_update_data_timeout(uint32_t timeout)
 {
     Clock_stop(update_data);
-    Clock_setTimeout(update_data, timeout * 1000 / Clock_tickPeriod);
+    Clock_setTimeout(update_data, timeouts[timeout] * 1000 / Clock_tickPeriod);
     Clock_start(update_data);
 }
 
@@ -221,12 +221,12 @@ void button_callback(PIN_Handle handle, PIN_Id pinId)
     if (PIN_getInputValue(BUTTON_USER) != 0)
         return;
 
-    if (update_data_timeout == UPDATE_DATA_1S_TIMEOUT)
-        update_data_timeout = UPDATE_DATA_5S_TIMEOUT;
-    else
-        update_data_timeout = UPDATE_DATA_1S_TIMEOUT;
+    timeout++;
+    if (timeout == TIMEOUT_COUNT) {
+        timeout = TIMEOUT_5S;
+    }
 
-    set_update_data_timeout(update_data_timeout);
+    set_update_data_timeout(timeout);
 }
 
 void update_data_callback(UArg arg0)

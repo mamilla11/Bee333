@@ -45,7 +45,6 @@ enum ConcentratorRadioOperationStatus {
 
 typedef enum {
     CONCENTRATOR,
-    DISPLAY,
 
     OBSERVER_COUNT,
 } Observer;

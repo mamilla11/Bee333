@@ -79,7 +79,7 @@ static void concentratorTaskFunction(UArg arg0, UArg arg1)
     while(1)
     {
         eMBPoll();
-        uint32_t events = Event_pend(concentratorEventHandle, 0, CONCENTRATOR_EVENT_ALL, 10);
+        uint32_t events = Event_pend(concentratorEventHandle, 0, CONCENTRATOR_EVENT_ALL, 5);
 
         if(events & CONCENTRATOR_EVENT_NEW_SENSOR_DATA)
         {
