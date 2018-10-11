@@ -93,7 +93,7 @@ Semaphore_Struct radioResultSem;  /* not static so you can see in ROV */
 static Semaphore_Handle radioResultSemHandle;
 static struct RadioOperation currentRadioOperation;
 static struct Data new_data;
-static uint8_t nodeAddress = 0;
+static uint8_t nodeAddress = 0x11;
 static struct SensorPacket dmSensorPacket;
 
 
@@ -143,27 +143,6 @@ static void nodeRadioTaskFunction(UArg arg0, UArg arg1)
     if(EasyLink_init(RADIO_EASYLINK_MODULATION) != EasyLink_Status_Success) {
         System_abort("EasyLink_init failed");
     }
-
-
-    /* If you wich to use a frequency other than the default use
-     * the below API
-     * EasyLink_setFrequency(868000000);
-     */
-
-    /* Use the True Random Number Generator to generate sensor node address randomly */;
-    Power_setDependency(PowerCC26XX_PERIPH_TRNG);
-    TRNGEnable();
-    /* Do not accept the same address as the concentrator, in that case get a new random value */
-    do
-    {
-        while (!(TRNGStatusGet() & TRNG_NUMBER_READY))
-        {
-            //wiat for randum number generator
-        }
-        nodeAddress = (uint8_t)TRNGNumberGet(TRNG_LOW_WORD);
-    } while (nodeAddress == RADIO_CONCENTRATOR_ADDRESS);
-    TRNGDisable();
-    Power_releaseDependency(PowerCC26XX_PERIPH_TRNG);
 
     /* Set the filter to the generated random address */
     if (EasyLink_enableRxAddrFilter(&nodeAddress, 1, 1) != EasyLink_Status_Success)

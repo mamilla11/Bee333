@@ -71,7 +71,7 @@ static PIN_State pin_state;
 
 uint32_t timeouts[] = {5000, 30000, 60000};
 typedef enum {TIMEOUT_5S, TIMEOUT_30S, TIMEOUT_60S, TIMEOUT_COUNT} Timeout;
-Timeout timeout = TIMEOUT_5S;
+Timeout timeout = TIMEOUT_30S;
 
 PIN_Config pinTable[] = {
    BUTTON_USER   | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
